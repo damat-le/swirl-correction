@@ -1,0 +1,14 @@
+numpy 
+pandas
+scikit-learn
+scikit-image
+scipy
+matplotlib
+torch
+torchvision
+torchmetrics
+torcheval
+torchsummary
+tensorboard
+tqdm
+PyYAML
