@@ -2,19 +2,19 @@ data_params:
   in_dir: ./data/flower_photos
 
 model_params:
-  model_name: unet
+  model_name: unet_seq
 
 opt_params:
   lr: 0.0007
 
 trainer_params:
   device: 'cuda'
-  batch_size: 16
+  batch_size: 32
   data_workers: 4
   epochs: 1000
 
 log_params:
-  log_dir: logs/Unet
+  log_dir: logs/UnetSeq
   seed: 42
 
 val_params:

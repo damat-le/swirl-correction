@@ -30,31 +30,33 @@ class UNet(nn.Module):
 
         self.enc1 = ConvBlock(in_channels, 32) 
         self.enc2 = ConvBlock(32, 64)
+        self.enc3 = ConvBlock(64, 128)
 
+        self.upconv3 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
+        self.dec3 = ConvBlock(128, 64)
         self.upconv2 = nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2)
         self.dec2 = ConvBlock(64, 32)
         self.final_conv = nn.Conv2d(32, out_channels, kernel_size=1)
 
         self.pool = nn.MaxPool2d(2)
-        self.relu = nn.LeakyReLU()
     
 
     def forward(self, x):
 
         enc1 = self.enc1(x)
         enc2 = self.enc2(self.pool(enc1))
-        dec2 = self.dec2(torch.cat([self.upconv2(enc2), enc1], dim=1))
+        enc3 = self.enc3(self.pool(enc2))
+        dec3 = self.dec3(torch.cat([self.upconv3(enc3), enc2], dim=1))
+        dec2 = self.dec2(torch.cat([self.upconv2(dec3), enc1], dim=1))
 
         return x + self.final_conv(dec2)
 
 class UNetSequential(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3):
+    def __init__(self, in_channels=3, out_channels=3, num_blocks=5):
         super().__init__()
         
         self.main = nn.Sequential(
-            UNet(in_channels, out_channels),
-            UNet(in_channels, out_channels),
-            UNet(in_channels, out_channels)
+            *[UNet(in_channels, out_channels) for _ in range(num_blocks)]
         )
 
     def forward(self, x):
