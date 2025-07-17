@@ -44,12 +44,12 @@ By starting with $K=64$ (entire image), the networks learns to reconstruct the s
 The evaluation metric used to assess the performance of the network is the following:
 
 $$
-E(x,y) = \frac{MSE(\hat{y}(x),y)}{MSE(x,y)} 
+E(\hat{y}(x),y) = \frac{MSE(\hat{y}(x),y)}{MSE(x,y)} 
 $$
 
 where $MSE$ denotes the Mean Squared Error, $x$ is the swirled image, $y$ is the ground truth image, and $\hat{y}(x)$ is the output of the network. The metric ranges from 0 to 1, where 1 means that the network is able to reconstruct the swirled image perfectly, and 0 means that the network is able to invert the swirl applied to the ground truth image.
 
-The network achieves an evaluation score of 0.16 on the test set containing images never seen during training.
+The network achieves an evaluation score around $0.16$ on the test set containing images never seen during training.
 
 <p align="center">
     <img src="assets/imgs/eval.png" alt="evaluation metric" width=40%/>
