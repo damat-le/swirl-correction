@@ -13,10 +13,7 @@ The swirl effect is a distortion that can be introduced in a image using the [`s
 ## Neural Network
 This section describes the proposed neural network designed to correct the swirl effect.
 
-**Architecture.** $~$ The network proposed here is a residual network that gives the following output:
-$
-\hat{y}(x) = x + r_1(x) + \ldots + r_N(x)
-$ 
+**Architecture.** $~$ The network proposed here is a residual network that gives the output $\hat{y}(x) = x + r_1(x) + \ldots + r_N(x)$, 
 where $r_i(x)$ are the residual blocks of the network implemented as U-Nets. 
 
 <p align="center">
@@ -49,7 +46,7 @@ $$
 
 where $MSE$ denotes the Mean Squared Error, $x$ is the swirled image, $y$ is the ground truth image, and $\hat{y}(x)$ is the output of the network. The metric ranges from 0 to 1, where 1 means that the network is able to reconstruct the swirled image perfectly, and 0 means that the network is able to invert the swirl applied to the ground truth image.
 
-The network achieves an evaluation score around $0.16$ on the test set containing images never seen during training.
+The network achieves an evaluation score around `0.16` on the test set containing images never seen during training.
 
 <p align="center">
     <img src="assets/imgs/eval.png" alt="evaluation metric" width=40%/>
