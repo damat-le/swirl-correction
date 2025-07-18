@@ -14,9 +14,11 @@ The swirl effect is a distortion that can be introduced in a image using the [`s
 This section describes the proposed neural network designed to correct the swirl effect.
 
 **Architecture.** $~$ The network proposed here is a residual network. By considering the following recursive formula:
+
 $$
 x_{i} = x_{i-1} + r_i(x_{i-1})
 $$
+
 in which $x_0$ is the swirled input image $x$ and $r_i(x_{i-1})$ is the output of the i-th U-Net (residual), the output of the entire network is given by $\hat{y}(x) = x_{N-1} + r_N(x_{N-1})$.
 
 <p align="center">
