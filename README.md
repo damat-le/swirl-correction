@@ -13,8 +13,11 @@ The swirl effect is a distortion that can be introduced in a image using the [`s
 ## Neural Network
 This section describes the proposed neural network designed to correct the swirl effect.
 
-**Architecture.** $~$ The network proposed here is a residual network that gives the output $\hat{y}(x) = x + r_1(x) + \ldots + r_N(x)$, 
-where $r_i(x)$ are the residual blocks of the network implemented as U-Nets and $x$ is the swirled input image. 
+**Architecture.** $~$ The network proposed here is a residual network. By considering the following recursive formula:
+$$
+x_{i} = x_{i-1} + r_i(x_{i-1})
+$$
+in which $x_0$ is the swirled input image $x$ and $r_i(x_{i-1})$ is the output of the i-th U-Net (residual), the output of the entire network is given by $\hat{y}(x) = x_{N-1} + r_N(x_{N-1})$.
 
 <p align="center">
     <img src="assets/imgs/network.png" alt="Network" width=80%/>
@@ -53,6 +56,8 @@ The network achieves an evaluation score around `0.16` on the test set containin
 </p>
 
 ## Usage
+
+To train the network:
 
 ```bash
 python -m src.models.unet.train -c=src/models/unet/config.yaml
