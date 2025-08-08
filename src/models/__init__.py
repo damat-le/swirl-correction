@@ -3,6 +3,7 @@ from .unet.unet import UNet
 from .unet.unet_seq import UNetSequential
 from .resnet.resnet import ResNet, ResNetPatch
 from .random.random import RandomModel
+from .positional.posnet import PosNet
 
 MODEL_REGISTRY = {
     "autoencoder": Autoencoder,
@@ -10,5 +11,6 @@ MODEL_REGISTRY = {
     "unet_seq": UNetSequential,
     "resnet": ResNet,
     "resnet_patch": ResNetPatch,
-    "random": RandomModel
+    "random": RandomModel,
+    "posnet": PosNet
 }
