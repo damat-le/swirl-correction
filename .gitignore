@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 .venv
+.env
 logs/
 data/
 notebooks/_helper.ipynb
