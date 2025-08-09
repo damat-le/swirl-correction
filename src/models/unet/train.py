@@ -1,5 +1,6 @@
 if __name__ == "__main__":
 
+    import time
     import torch
     import numpy as np
     from src.dataset import load_flowers_dataset, SwirledDataset
@@ -119,7 +120,12 @@ if __name__ == "__main__":
         else:
             top_k = 4
 
+        END_TIME = time.time()
         for batch in dl:
+
+            # monitor the time to load a batch
+            data_time = time.time() - END_TIME
+
             swirled, mask, original = batch
             swirled = swirled.to(device)
             mask = mask.to(device)
@@ -131,19 +137,18 @@ if __name__ == "__main__":
             
             logger.log_scalars(
                 scalars={
-                    'TopKLoss/train': loss.item(),
-                    'Loss/train': other_info['loss_full'].item(),
                     'LR': optimizer.param_groups[0]['lr'],
                     'Epoch': epoch,
-                    'TopK': top_k
+                    **other_info
                 },
                 step=it
             )
 
-            if it % 10 == 0:
+            if it % 1 == 0:
                 pbar.set_postfix({
                     "Epoch": epoch,
                     "Loss": loss.item(),
+                    "DataTime": f"{data_time:.2f}s",
                 })
 
             loss.backward()
@@ -152,6 +157,7 @@ if __name__ == "__main__":
             pbar.update(1)
             it += 1
 
+            END_TIME = time.time()
         # -------------------------------------------
         # Validation
         # -------------------------------------------
