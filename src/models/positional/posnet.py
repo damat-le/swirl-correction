@@ -11,40 +11,33 @@ def build_normalized_grid(H, W):
 
 
 class FFBlock(nn.Module):
-    """
-    it outputs the transformed coordinates
-    """
 
-    def __init__(self, in_dim, hidden_dim=512):
+    def __init__(self, in_dim, hidden_dim=1024):
         super().__init__()
-        self.mlp = nn.Sequential(
+        self.ffn = nn.Sequential(
             nn.Linear(in_dim, hidden_dim),
             nn.LeakyReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(hidden_dim, hidden_dim*2),
-            nn.LeakyReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(hidden_dim*2, hidden_dim),
-            nn.LeakyReLU(),
-            nn.Dropout(0.1),
             nn.Linear(hidden_dim, 2),
             nn.LeakyReLU()
         )
 
     def forward(self, x):
-        return self.mlp(x)
+        return self.ffn(x)
 
 
 class ConvBlock(nn.Module):
-    """ Reduce the (3,128,128) images to (512,4,4) """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.conv = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=3, padding=1),
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.LeakyReLU(),
-            nn.Conv2d(16, 16, kernel_size=3, padding=1),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1, groups=32),
             nn.LeakyReLU(),
-            nn.Conv2d(16, 16, kernel_size=3, padding=1),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, groups=64),
+            nn.LeakyReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, groups=64),
+            nn.LeakyReLU(),
+            nn.Conv2d(64, 8, kernel_size=3, padding=1, groups=8),
             nn.LeakyReLU(),
         )
     
@@ -53,10 +46,11 @@ class ConvBlock(nn.Module):
 
 
 class PosNet(nn.Module):
+    
     def __init__(self):
         super().__init__()
         self.conv = ConvBlock()
-        self.mlp = FFBlock(2+16)
+        self.ffn = FFBlock(2+8)
 
         self.register_buffer(
             "coords", build_normalized_grid(128, 128),
@@ -65,14 +59,20 @@ class PosNet(nn.Module):
     def forward(self, I_swirl):
         B, C, H, W = I_swirl.shape
 
-        feats = self.conv(I_swirl).permute(0, 2, 3, 1) # (B,H,W,64)
+        # The conv block extracts F features per pixel
+        feats = self.conv(I_swirl).permute(0, 2, 3, 1) # (B,H,W,F)
 
+        # Initialize input coordinates of pixels
         coords = self.coords.unsqueeze(0).repeat(B,1,1,1) #(B,H,W,2)
 
-        in_coords = torch.concat([coords, feats], dim=-1) #(B, H, W, 2+64)
+        # For each pixel, concatenate the coordinates with the F features
+        in_coords = torch.concat([coords, feats], dim=-1) #(B, H, W, 2+F)
 
-        out_coords = coords + self.mlp(in_coords) #(B,H,W,2)
+        # Get the new coordinates as the original coordinates plus 
+        # the residual coordinates learnt by the feed-forward block
+        out_coords = coords + self.ffn(in_coords) #(B,H,W,2)
 
+        # Use the new coordinates to reconstruct the non-swirled image
         I_recon = F.grid_sample(I_swirl, out_coords, align_corners=True)
         
         return I_recon
@@ -83,10 +83,10 @@ class PosNet(nn.Module):
 
     def patchwise_loss(self, x, y, patch_size=16, top_k=16):
         """
-        Computes the loss function for the ResNet model.
+        Computes the loss function as the average MSE over the `top_k` patches with the highest MSE.
 
         We first divide the output of the model into patches and then compute the MSE on each patch.
-        Then the loss is average over the K patches with the highest MSE.
+        Then the loss is average over the `top_k` patches with the highest MSE.
         
         Args:
             x (torch.Tensor): Input tensor.
