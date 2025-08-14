@@ -5,3 +5,4 @@ This is a 2-stage pipeline trained end2end:
 
 The best evaluation score achieved with this approach is however around 0.29.
 
+The issue is probably in the swirl correction module (currently I used the sequential unet). On the other hand the swirl detection module seems to work pretty well.
