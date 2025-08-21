@@ -73,7 +73,8 @@ class UNetSequential(nn.Module):
         Returns:
             torch.Tensor: Computed loss.
         """
-        return F.mse_loss(x, y)
+        loss = F.mse_loss(x,y)
+        return loss, {"Loss": loss.item()}
 
 
     def loss_function_patch(self, x, y, patch_size=16, top_k=16):
@@ -124,7 +125,7 @@ class UNetSequential(nn.Module):
         top_k_loss = top_k_mse.mean()
 
         return top_k_loss, {
-            'Loss/Full': F.mse_loss(output, y).item(),
+            'Loss': F.mse_loss(output, y).item(),
             'Loss/TopK': top_k_loss.item(),
             'TopK': top_k
         }
@@ -190,11 +191,13 @@ class UNetSequential(nn.Module):
         top_k_mse = mse_per_patch.gather(1, edge_top_k_indices)
         top_k_loss = top_k_mse.mean()
 
-        return top_k_loss + edge_top_k_loss, {
-            'Loss/Full': F.mse_loss(output, y).item(),
+        loss =  edge_top_k_loss + top_k_loss
+
+        return loss, {
+            'Loss': F.mse_loss(output, y).item(),
             'Loss/TopK': top_k_loss.item(),
             'Loss/TopKEdge': edge_top_k_loss.item(),
-            'Loss/Combo': (top_k_loss + edge_top_k_loss).item(),
+            'Loss/Combo': loss.item(),
             'TopK': top_k
         }
 

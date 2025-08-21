@@ -1,19 +1,125 @@
+import random
+import matplotlib.pyplot as plt 
+from src.eval import inv_preprocess_img
+
+def generate_samples(log_dir, dataset, model, num_samples=5):
+    """
+    Generate samples from the dataset using the model.
+    """
+    device = next(model.parameters()).device
+    model.eval()
+    
+    for i in range(num_samples):
+        sample = dataset[i]
+        simg, mask, oimg = sample
+
+        with torch.no_grad():
+            pred_mask, output = model(simg.unsqueeze(0).to(device))
+            pred_mask = pred_mask.squeeze(0).cpu()
+            output = output.squeeze(0).cpu()
+
+        plt.figure(figsize=(20, 6))
+
+        plt.subplot(1, 5, 1)
+        plt.imshow(
+            inv_preprocess_img(simg)
+        )
+        plt.title("Swirled Image")
+
+        plt.subplot(1, 5, 2)
+        plt.imshow(
+            inv_preprocess_img(mask),
+            cmap='gray'
+        )
+        plt.title("Mask")
+
+        plt.subplot(1, 5, 3)
+        plt.imshow(
+            inv_preprocess_img(oimg)
+        )
+        plt.title("Original Image")
+
+        plt.subplot(1, 5, 4)
+        plt.imshow(
+            inv_preprocess_img(output)
+        )
+        plt.title("Model Output")
+
+        plt.subplot(1, 5, 5)
+        plt.imshow(
+            inv_preprocess_img(pred_mask),
+            cmap='gray'
+        )
+        plt.title("Predicted Mask")
+
+        plt.savefig(
+            f"{log_dir}/sample_{i}.png",
+            bbox_inches='tight'
+        )
+        plt.close()
+                
+
+def eval_swirl_mask(dataloader, model):
+
+    # set seed for reproducibility
+    random.seed(42)
+    np.random.seed(42)
+    torch.manual_seed(42)
+
+    device = next(model.parameters()).device
+
+    pbar_val = tqdm(
+        total=len(dataloader), 
+        desc=f"Validation (mse_ratio)", 
+        leave=False
+    )
+
+    loss = 0.0
+    with torch.no_grad():
+        for batch in dataloader:
+            simg, mask, oimg = batch
+            simg = simg.to(device)
+            mask = mask.to(device)
+            oimg = oimg.to(device)
+
+            _, output = model(simg)
+
+            #only compute loss for the masked area
+            output = output * mask
+            oimg = oimg * mask
+            simg = simg * mask
+            # Compute the loss
+            baseline_loss = torch.nn.functional.mse_loss(simg, oimg)
+            model_loss = torch.nn.functional.mse_loss(output, oimg)
+            loss += model_loss / baseline_loss
+
+            pbar_val.update(1)
+
+    # Average the loss over the number of batches
+    loss /= len(dataloader)
+
+    pbar_val.set_postfix({
+        "mse_ratio": loss.item(),
+    })
+    pbar_val.close()
+
+    return {'mse_ratio:' : loss.item()}
+
+
 if __name__ == "__main__":
 
     import time
     import torch
     import numpy as np
-    from src.torch_dataset import load_flowers_dataset, SwirledDataset
+    from src.dataset import load_flowers_dataset, SwirledDataset
     from torch.utils.data import DataLoader
-    from torch.optim import Adam, AdamW
-    from torch.optim.lr_scheduler import CosineAnnealingLR
+    from torch.optim import Adam
     from tqdm import tqdm
 
     from argparse import ArgumentParser
     from src.utils.config import Config
     from src.utils.logger import MyLogger
     from src.models import MODEL_REGISTRY
-    from src.eval import eval_swirl_mask, generate_samples
     
 
     # -------------------------------------------
@@ -81,25 +187,17 @@ if __name__ == "__main__":
     # Initialize the model
     # -------------------------------------------
     architecture = MODEL_REGISTRY[c.model_params.pop("model_name")]
-    model = architecture(**c.model_params)
+    kwargs_detector = c.detector_params
+    kwargs_corrector = c.corrector_params
+    model = architecture(kwargs_detector, kwargs_corrector)
     model = model.to(device)
 
-    
     # -------------------------------------------
     # Initialize the optimizer
     # -------------------------------------------
-    optimizer = AdamW(
+    optimizer = Adam(
         model.parameters(),
         lr=c.opt_params["lr"]
-    )
-
-    # -------------------------------------------
-    # Initialize the LR scheduler
-    # -------------------------------------------
-    
-    scheduler = CosineAnnealingLR(
-        optimizer,
-        T_max=c.lr_scheduler_params["T_max"]
     )
 
     # -------------------------------------------
@@ -121,15 +219,6 @@ if __name__ == "__main__":
     for epoch in range(c.trainer_params["epochs"]):
         model.train()
 
-        if epoch < 3:
-            top_k = 64
-        elif epoch < 100:
-            top_k = 9
-        elif epoch < 200:
-            top_k = 6
-        else:
-            top_k = 4
-
         END_TIME = time.time()
         for batch in dl:
 
@@ -142,9 +231,9 @@ if __name__ == "__main__":
 
             optimizer.zero_grad()
             output = model(swirled)
-            # loss, other_info = model.loss_function(output, original)
-            loss, other_info = model.loss_function_patch(output, original, top_k=top_k)
-            
+
+            loss, other_info = model.loss_function(output, original, mask)
+
             logger.log_scalars(
                 scalars={
                     'LR': optimizer.param_groups[0]['lr'],
@@ -199,6 +288,6 @@ if __name__ == "__main__":
             optimizer=None,
             scheduler=None
         )
-        scheduler.step()
+
         pbar.reset()
     pbar.close()

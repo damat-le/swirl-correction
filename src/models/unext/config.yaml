@@ -2,16 +2,19 @@ data_params:
   in_dir: ./data/flower_photos
 
 model_params:
-  model_name: posnet
-  in_channels: 3 
-  out_channels: 2
-  num_blocks: 5
+  model_name: unext
+  in_dim: 3
+  out_dim: 3
+  depths: [1, 1, 1, 1]
+  dims: [64, 128, 256]
+  res_scale_init_value: 1.0e-6
 
 opt_params:
-  lr: 0.0007
+  lr: 2.0e-3
+  weight_decay: 1.0e-8
 
 lr_scheduler_params:
-  T_max: 350
+  T_max: 200
 
 trainer_params:
   device: 'cuda:1'
@@ -20,7 +23,7 @@ trainer_params:
   epochs: 1000
 
 log_params:
-  log_dir: logs/PosNet
+  log_dir: logs/UNext
   seed: 42
 
 val_params:

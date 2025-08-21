@@ -5,7 +5,7 @@ if __name__ == "__main__":
     import numpy as np
     from src.torch_dataset import load_flowers_dataset, SwirledDataset
     from torch.utils.data import DataLoader
-    from torch.optim import Adam, AdamW
+    from torch.optim import AdamW
     from torch.optim.lr_scheduler import CosineAnnealingLR
     from tqdm import tqdm
 
@@ -88,9 +88,11 @@ if __name__ == "__main__":
     # -------------------------------------------
     # Initialize the optimizer
     # -------------------------------------------
+
     optimizer = AdamW(
         model.parameters(),
-        lr=c.opt_params["lr"]
+        lr=c.opt_params["lr"],
+        weight_decay=c.opt_params["weight_decay"]
     )
 
     # -------------------------------------------
@@ -123,18 +125,19 @@ if __name__ == "__main__":
 
         if epoch < 3:
             top_k = 64
-        elif epoch < 100:
-            top_k = 9
+        elif epoch < 140:
+            top_k = 10
         elif epoch < 200:
-            top_k = 6
+            top_k = 8
         else:
             top_k = 4
 
         END_TIME = time.time()
         for batch in dl:
 
+            # monitor the time to load a batch
             data_time = time.time() - END_TIME
-        
+
             swirled, mask, original = batch
             swirled = swirled.to(device)
             mask = mask.to(device)
@@ -142,7 +145,6 @@ if __name__ == "__main__":
 
             optimizer.zero_grad()
             output = model(swirled)
-            # loss, other_info = model.loss_function(output, original)
             loss, other_info = model.loss_function_patch(output, original, top_k=top_k)
             
             logger.log_scalars(
@@ -199,6 +201,8 @@ if __name__ == "__main__":
             optimizer=None,
             scheduler=None
         )
+
         scheduler.step()
+
         pbar.reset()
     pbar.close()
