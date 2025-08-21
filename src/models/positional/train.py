@@ -3,9 +3,10 @@ if __name__ == "__main__":
     import time
     import torch
     import numpy as np
-    from src.dataset import load_flowers_dataset, SwirledDataset
+    from src.torch_dataset import load_flowers_dataset, SwirledDataset
     from torch.utils.data import DataLoader
-    from torch.optim import Adam
+    from torch.optim import Adam, AdamW
+    from torch.optim.lr_scheduler import CosineAnnealingLR
     from tqdm import tqdm
 
     from argparse import ArgumentParser
@@ -87,9 +88,18 @@ if __name__ == "__main__":
     # -------------------------------------------
     # Initialize the optimizer
     # -------------------------------------------
-    optimizer = Adam(
+    optimizer = AdamW(
         model.parameters(),
         lr=c.opt_params["lr"]
+    )
+
+    # -------------------------------------------
+    # Initialize the LR scheduler
+    # -------------------------------------------
+    
+    scheduler = CosineAnnealingLR(
+        optimizer,
+        T_max=c.lr_scheduler_params["T_max"]
     )
 
     # -------------------------------------------
@@ -113,10 +123,10 @@ if __name__ == "__main__":
 
         if epoch < 3:
             top_k = 64
-        elif epoch < 80:
-            top_k = 16
-        elif epoch < 150:
-            top_k = 8
+        elif epoch < 100:
+            top_k = 9
+        elif epoch < 200:
+            top_k = 6
         else:
             top_k = 4
 
@@ -133,7 +143,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             output = model(swirled)
             # loss, other_info = model.loss_function(output, original)
-            loss, other_info = model.patchwise_loss(output, original, top_k=top_k)
+            loss, other_info = model.loss_function_patch(output, original, top_k=top_k)
             
             logger.log_scalars(
                 scalars={
@@ -189,6 +199,6 @@ if __name__ == "__main__":
             optimizer=None,
             scheduler=None
         )
-
+        scheduler.step()
         pbar.reset()
     pbar.close()
